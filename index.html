@@ -41,6 +41,7 @@
             border-radius: 4px;
             text-align: center;
             background-color: #e0f7fa;
+            margin-bottom: 20px; /* Added margin for separation */
         }
         #calculated-grade-label {
             font-size: 1.2em;
@@ -54,6 +55,11 @@
             font-weight: bolder;
             color: #00796b;
             display: block;
+        }
+        .navigation-link {
+            text-align: center;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
         }
     </style>
 </head>
@@ -97,11 +103,14 @@
         <span id="calculated-grade"></span>
     </div>
 
+    <div class="navigation-link">
+        <a href="predictor.html">Looking to calculator a score within a category? Use this link.</a>
+    </div>
+
 </div>
 
 <script>
     // This is the complete rubric data from the table you provided, structured for quick look-up.
-    // Keys are the sorted scores joined by a comma (e.g., "1,2,3"), and values are the resulting grade.
     const RUBRIC_MAP = {
         "1,1,1": "F",
         "1,1,2": "F",
@@ -126,25 +135,17 @@
     };
 
     function calculateGrade() {
-        // 1. Get scores from the dropdowns
         const fluency = parseInt(document.getElementById('fluency').value);
         const representations = parseInt(document.getElementById('representations').value);
         const justification = parseInt(document.getElementById('justification').value);
 
-        // 2. Put the scores into an array
         const scores = [fluency, representations, justification];
-
-        // 3. Sort the array numerically (Crucial because order doesn't matter)
         scores.sort((a, b) => a - b);
-
-        // 4. Create the key for the map (e.g., "1,2,3")
+        
         const key = scores.join(',');
-
-        // 5. Look up the grade in the map
         const grade = RUBRIC_MAP[key];
 
-        // 6. Display the result
-        document.getElementById('calculated-grade').textContent = grade || "N/A"; // Display the grade, or N/A if something goes wrong
+        document.getElementById('calculated-grade').textContent = grade || "N/A";
     }
 
     // Call the function once when the page loads to display the initial grade (defaulting to 3, 3, 3 = AB)
