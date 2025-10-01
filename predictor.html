@@ -1,265 +1,136 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Prediction Time-Series Predictor</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            background-color: #f4f4f9;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        .input-group {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        label {
-            font-weight: bold;
-            flex-basis: 35%;
-        }
-        input[type="text"] {
-            flex-grow: 1;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 16px;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-            width: 100%;
-            margin-bottom: 20px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .results-grid {
-            margin-top: 30px;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-        }
-        .result-box {
-            padding: 15px;
-            border-radius: 4px;
-            text-align: center;
-        }
-        .result-box-main {
-            grid-column: 1 / -1; /* Spans both columns */
-            background-color: #d4edda;
-            border: 2px solid #28a745;
-        }
-        .result-box-secondary {
-            background-color: #e2e3e5;
-            border: 1px solid #c8c8c8;
-        }
-        .result-box strong {
-            font-size: 1.1em;
-            display: block;
-            margin-bottom: 5px;
-        }
-        .result-value {
-            font-size: 1.8em;
-            font-weight: bold;
-            color: #0d6d24;
-        }
-        .result-value-secondary {
-            font-size: 1.4em;
-            font-weight: bold;
-            color: #333;
-        }
-        #trendPrediction .result-value {
-            color: #007bff; /* Highlight the main prediction */
-        }
-        .error-message {
-            color: #dc3545;
-            margin-top: 10px;
-            font-weight: bold;
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
+// --- UTILITY FUNCTIONS ---
 
-<div class="container">
-    <h1>Multi-Prediction Time-Series Predictor</h1>
+/**
+ * Parses the user input string into an array of numbers.
+ * @param {string} input - The raw input string.
+ * @returns {number[]} - An array of valid numbers.
+ */
+function parseInput(input) {
+    return input
+        .split(/[\s,]+/)
+        .filter(s => s.trim() !== '')
+        .map(Number)
+        .filter(n => !isNaN(n));
+}
 
-    <div class="input-group">
-        <label for="numberInput">Enter Numbers:</label>
-        <input type="text" id="numberInput" placeholder="e.g., 1, 3, 2, 3, 2">
-    </div>
+/**
+ * Calculates the slope (b) of the Least-Squares Regression Line (LSRL).
+ */
+function calculateSlope(x, y, meanX, meanY) {
+    let numerator = 0;
+    let denominator = 0;
 
-    <button onclick="predictNext()">Calculate Predictions</button>
-
-    <div id="errorMessage" class="error-message" style="display: none;"></div>
-
-    <div class="results-grid">
-        <div id="trendPrediction" class="result-box result-box-main">
-            <strong>Trend Prediction (LSRL)</strong>
-            <span class="result-value">--</span>
-        </div>
-        
-        <div id="modePrediction" class="result-box result-box-secondary">
-            <strong>Mode</strong>
-            <span class="result-value-secondary">--</span>
-        </div>
-        
-        <div id="avgLastTwoPrediction" class="result-box result-box-secondary">
-            <strong>Avg of Last Two</strong>
-            <span class="result-value-secondary">--</span>
-        </div>
-    </div>
-</div>
-
-<script>
-    // --- UTILITY FUNCTIONS ---
-
-    /**
-     * Parses the user input string into an array of numbers.
-     * @param {string} input - The raw input string.
-     * @returns {number[]} - An array of valid numbers.
-     */
-    function parseInput(input) {
-        return input
-            .split(/[\s,]+/)
-            .filter(s => s.trim() !== '')
-            .map(Number)
-            .filter(n => !isNaN(n));
+    for (let i = 0; i < x.length; i++) {
+        const dx = x[i] - meanX;
+        const dy = y[i] - meanY;
+        numerator += dx * dy;
+        denominator += dx * dx;
     }
 
-    /**
-     * Calculates the slope (b) of the Least-Squares Regression Line (LSRL).
-     */
-    function calculateSlope(x, y, meanX, meanY) {
-        let numerator = 0;
-        let denominator = 0;
+    return denominator === 0 ? 0 : numerator / denominator;
+}
 
-        for (let i = 0; i < x.length; i++) {
-            const dx = x[i] - meanX;
-            const dy = y[i] - meanY;
-            numerator += dx * dy;
-            denominator += dx * dx;
+/**
+ * Calculates the mode of an array of numbers.
+ * - If unimodal, returns the single mode.
+ * - If multimodal, returns the average of all modes.
+ * - If no numbers repeat, returns 'N/A (No Repeat)'.
+ * @param {number[]} arr - Array of numbers.
+ * @returns {number|string} - The mode, average of modes, or 'N/A (No Repeat)'.
+ */
+function calculateMode(arr) {
+    if (arr.length === 0) return 'N/A (Empty)';
+
+    const counts = {};
+    let maxCount = 0;
+
+    // 1. Count frequencies and find max count
+    arr.forEach(val => {
+        // Use a string key for robust handling of floating point numbers
+        const key = String(val);
+        counts[key] = (counts[key] || 0) + 1;
+        if (counts[key] > maxCount) {
+            maxCount = counts[key];
         }
+    });
 
-        return denominator === 0 ? 0 : numerator / denominator;
+    // 2. Find all values (modes) that match the max frequency
+    const modes = [];
+    for (const key in counts) {
+        if (counts[key] === maxCount) {
+            // Convert key back to number
+            modes.push(Number(key));
+        }
     }
 
-    /**
-     * Calculates the mode (most frequent value) of an array of numbers.
-     * Returns "N/A" if there are multiple modes (multimodal).
-     * @param {number[]} arr - Array of numbers.
-     * @returns {number|string} - The single mode or "N/A".
-     */
-    function calculateMode(arr) {
-        if (arr.length === 0) return 'N/A';
+    // 3. Handle results
+    if (maxCount === 1) {
+        // No number repeats (e.g., 1, 2, 3, 4)
+        return 'N/A (No Repeat)';
+    }
 
-        const counts = {};
-        let maxCount = 0;
-        
-        // Count frequencies
-        arr.forEach(val => {
-            // Use String() for map keys to handle floating point precision issues robustly
-            const key = String(val); 
-            counts[key] = (counts[key] || 0) + 1;
-            if (counts[key] > maxCount) {
-                maxCount = counts[key];
-            }
-        });
-
-        const modes = [];
-        // Find all numbers that match the max frequency
-        for (const key in counts) {
-            if (counts[key] === maxCount) {
-                // Convert key back to number
-                modes.push(Number(key)); 
-            }
-        }
-
-        // If all numbers are unique, maxCount is 1 and modes.length is arr.length
-        if (maxCount === 1) return 'N/A (No Repeat)';
-        
-        // If there's more than one number with the max frequency, it's multimodal
-        if (modes.length > 1) return 'N/A (Multi)'; 
-
+    // Unimodal (one mode) or Multimodal (multiple modes)
+    if (modes.length === 1) {
+        // Unimodal
         return modes[0];
+    } else {
+        // Multimodal: Calculate the average of the modes
+        const sumOfModes = modes.reduce((acc, val) => acc + val, 0);
+        return sumOfModes / modes.length;
+    }
+}
+
+// --- MAIN PREDICTION FUNCTION ---
+
+function predictNext() {
+    const inputElement = document.getElementById('numberInput');
+    const errorElement = document.getElementById('errorMessage');
+
+    const trendEl = document.querySelector('#trendPrediction .result-value');
+    const modeEl = document.querySelector('#modePrediction .result-value-secondary');
+    const avgTwoEl = document.querySelector('#avgLastTwoPrediction .result-value-secondary');
+
+    // Reset results
+    [trendEl, modeEl, avgTwoEl].forEach(el => el.textContent = '--');
+    errorElement.style.display = 'none';
+
+    const data = parseInput(inputElement.value);
+
+    if (data.length < 2) {
+        errorElement.textContent = 'Please enter at least two valid numbers.';
+        errorElement.style.display = 'block';
+        return;
     }
 
-    // --- MAIN PREDICTION FUNCTION ---
+    // --- 1. TREND PREDICTION (LSRL) ---
+    const n = data.length;
+    const x = Array.from({ length: n }, (_, i) => i);
+    const y = data;
 
-    function predictNext() {
-        const inputElement = document.getElementById('numberInput');
-        const errorElement = document.getElementById('errorMessage');
-        
-        const trendEl = document.querySelector('#trendPrediction .result-value');
-        const modeEl = document.querySelector('#modePrediction .result-value-secondary');
-        const avgTwoEl = document.querySelector('#avgLastTwoPrediction .result-value-secondary');
-        
-        // Reset results
-        [trendEl, modeEl, avgTwoEl].forEach(el => el.textContent = '--');
-        errorElement.style.display = 'none';
+    const sumX = x.reduce((acc, val) => acc + val, 0);
+    const sumY = y.reduce((acc, val) => acc + val, 0);
+    const meanX = sumX / n;
+    const meanY = sumY / n;
 
-        const data = parseInput(inputElement.value);
+    const b = calculateSlope(x, y, meanX, meanY);
+    const a = meanY - b * meanX;
 
-        if (data.length < 2) {
-            errorElement.textContent = 'Please enter at least two valid numbers.';
-            errorElement.style.display = 'block';
-            return;
-        }
+    const nextX = n;
+    const predictedY = a + b * nextX;
+    trendEl.textContent = predictedY.toFixed(2);
 
-        // --- 1. TREND PREDICTION (LSRL) ---
-        const n = data.length;
-        const x = Array.from({ length: n }, (_, i) => i);
-        const y = data;
-
-        const sumX = x.reduce((acc, val) => acc + val, 0);
-        const sumY = y.reduce((acc, val) => acc + val, 0);
-        const meanX = sumX / n;
-        const meanY = sumY / n;
-
-        const b = calculateSlope(x, y, meanX, meanY);
-        const a = meanY - b * meanX;
-        
-        const nextX = n; 
-        const predictedY = a + b * nextX;
-        trendEl.textContent = predictedY.toFixed(2);
-
-        // --- 2. MODE PREDICTION ---
-        const mode = calculateMode(data);
-        if (typeof mode === 'number') {
-            modeEl.textContent = mode.toFixed(2);
-        } else {
-            modeEl.textContent = mode;
-        }
-
-        // --- 3. AVERAGE OF LAST TWO ---
-        const lastValue = data[n - 1];
-        const secondLastValue = data[n - 2];
-        const avgLastTwo = (lastValue + secondLastValue) / 2;
-        avgTwoEl.textContent = avgLastTwo.toFixed(2);
+    // --- 2. MODE PREDICTION (Updated) ---
+    const modeResult = calculateMode(data);
+    if (typeof modeResult === 'number') {
+        modeEl.textContent = modeResult.toFixed(2);
+    } else {
+        modeEl.textContent = modeResult; // Will display 'N/A (No Repeat)'
     }
+
+    // --- 3. AVERAGE OF LAST TWO ---
+    const lastValue = data[n - 1];
+    const secondLastValue = data[n - 2];
+    const avgLastTwo = (lastValue + secondLastValue) / 2;
+    avgTwoEl.textContent = avgLastTwo.toFixed(2);
+}
 </script>
-
-</body>
-</html>
