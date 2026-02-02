@@ -2,20 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sequence Analyzer - Fixed</title>
+    <title>Sequence Analyzer - Custom Weights</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 2rem auto; line-height: 1.6; padding: 0 1rem; color: #333; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 650px; margin: 2rem auto; line-height: 1.6; padding: 0 1rem; color: #333; }
         .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 2rem; border: 1px solid #eee; }
         .input-group { margin-bottom: 1.5rem; }
         label { display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; color: #555; }
         input[type="text"], input[type="number"], select { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
-        .weights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; }
+        .weights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; border: 1px dashed #ccc; }
         .error { color: #d93025; font-weight: bold; margin-top: 1rem; padding: 12px; background: #ffeeee; border: 1px solid #ffcccc; border-radius: 6px; display: none; }
         #results { margin-top: 2rem; border-top: 2px solid #f0f0f0; padding-top: 1rem; }
         .result-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f9f9f9; }
-        .final-score { font-size: 1.5rem; color: #1a73e8; font-weight: 800; margin-top: 1.5rem; text-align: center; background: #e8f0fe; padding: 15px; border-radius: 8px; border: 1px solid #c2e7ff; }
-        button { width: 100%; padding: 14px; background: #1a73e8; color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
-        button:hover { background: #1557b0; }
+        .final-score { font-size: 1.6rem; color: #1a73e8; font-weight: 800; margin-top: 1.5rem; text-align: center; background: #e8f0fe; padding: 15px; border-radius: 8px; border: 1px solid #c2e7ff; }
+        .button-group { display: flex; gap: 10px; margin-top: 1rem; }
+        .btn-calc { flex: 2; padding: 14px; background: #1a73e8; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-reset { flex: 1; padding: 14px; background: #f1f3f4; color: #3c4043; border: 1px solid #dadce0; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-calc:hover { background: #1557b0; }
+        .btn-reset:hover { background: #e8eaed; }
     </style>
 </head>
 <body>
@@ -24,12 +27,12 @@
     <h2>Sequence Analyzer</h2>
 
     <div class="input-group">
-        <label>Enter Sequence (1, 2, 3, or 4):</label>
-        <input type="text" id="dataInput" placeholder="e.g., 1 4 2 3">
+        <label>Enter Sequence (Values: 1, 2, 3, 4):</label>
+        <input type="text" id="dataInput" placeholder="e.g., 1 2 4 3 2">
     </div>
 
     <div class="input-group">
-        <label>Lookback Period:</label>
+        <label>Recent Lookback Period:</label>
         <select id="lookbackCount" onchange="updateLabels()">
             <option value="2">Last 2 scores</option>
             <option value="3" selected>Last 3 scores</option>
@@ -39,30 +42,33 @@
 
     <div class="weights-grid">
         <div>
-            <label>Mode Weight %</label>
-            <input type="number" id="wMode" value="25">
+            <label>Mode Weight (%)</label>
+            <input type="number" id="wMode" value="20">
         </div>
         <div>
-            <label>Avg Weight %</label>
-            <input type="number" id="wAvg" value="25">
+            <label>Avg Weight (%)</label>
+            <input type="number" id="wAvg" value="15">
         </div>
         <div>
-            <label id="weightLabelLastN">Last 3 Weight %</label>
-            <input type="number" id="wLastN" value="25">
+            <label id="weightLabelLastN">Last 3 Weight (%)</label>
+            <input type="number" id="wLastN" value="40">
         </div>
         <div>
-            <label>Trend Weight %</label>
+            <label>Trend Weight (%)</label>
             <input type="number" id="wTrend" value="25">
         </div>
     </div>
 
-    <button onclick="analyze()">Calculate Results</button>
+    <div class="button-group">
+        <button class="btn-calc" onclick="analyze()">Calculate Results</button>
+        <button class="btn-reset" onclick="resetForm()">Reset Defaults</button>
+    </div>
 
     <div id="errorMessage" class="error"></div>
 
     <div id="results" style="display:none;">
         <h3>Calculated Metrics</h3>
-        <div class="result-item"><span>Mode:</span> <strong id="resMode">-</strong></div>
+        <div class="result-item"><span>Mode (Frequency):</span> <strong id="resMode">-</strong></div>
         <div class="result-item"><span>Overall Average:</span> <strong id="resAvg">-</strong></div>
         <div class="result-item"><span id="labelLastN">Last 3 Average:</span> <strong id="resLastN">-</strong></div>
         <div class="result-item"><span>Predicted Trend:</span> <strong id="resTrend">-</strong></div>
@@ -71,11 +77,27 @@
 </div>
 
 <script>
-// Logic to update the UI labels when the dropdown changes
 function updateLabels() {
     const val = document.getElementById('lookbackCount').value;
-    document.getElementById('weightLabelLastN').innerText = `Last ${val} Weight %`;
+    document.getElementById('weightLabelLastN').innerText = `Last ${val} Weight (%)`;
     document.getElementById('labelLastN').innerText = `Last ${val} Average:`;
+}
+
+function resetForm() {
+    // Reset inputs
+    document.getElementById('dataInput').value = "";
+    document.getElementById('lookbackCount').value = "3";
+    
+    // Reset specific weights requested
+    document.getElementById('wMode').value = "20";
+    document.getElementById('wAvg').value = "15";
+    document.getElementById('wLastN').value = "40";
+    document.getElementById('wTrend').value = "25";
+    
+    // Reset UI
+    updateLabels();
+    document.getElementById('errorMessage').style.display = 'none';
+    document.getElementById('results').style.display = 'none';
 }
 
 function analyze() {
@@ -84,16 +106,14 @@ function analyze() {
     const errDiv = document.getElementById('errorMessage');
     const resDiv = document.getElementById('results');
     
-    // 1. Parse and Validate Numbers
     const rawItems = inputVal.split(/[ ,]+/).filter(i => i.length > 0);
     const nums = rawItems.map(Number);
 
     if (nums.length === 0 || nums.some(n => ![1, 2, 3, 4].includes(n) || isNaN(n))) {
-        showError("Please enter only numbers 1, 2, 3, or 4 separated by spaces or commas.");
+        showError("Please enter only numbers 1, 2, 3, or 4.");
         return;
     }
 
-    // 2. Parse and Validate Weights
     const wMode = parseFloat(document.getElementById('wMode').value) || 0;
     const wAvg = parseFloat(document.getElementById('wAvg').value) || 0;
     const wLastN = parseFloat(document.getElementById('wLastN').value) || 0;
@@ -101,17 +121,14 @@ function analyze() {
 
     const totalWeight = wMode + wAvg + wLastN + wTrend;
     if (Math.abs(totalWeight - 100) > 0.01) {
-        showError(`Weights must add to 100% (Current total: ${totalWeight}%).`);
+        showError(`Weights must total 100%. Currently: ${totalWeight}%`);
         return;
     }
 
-    // Hide error and show results
     errDiv.style.display = 'none';
     resDiv.style.display = 'block';
 
-    // 3. Statistical Calculations
-    
-    // Mode (Most frequent number)
+    // 1. Mode
     const freq = {};
     nums.forEach(n => freq[n] = (freq[n] || 0) + 1);
     let mode = nums[0];
@@ -123,17 +140,17 @@ function analyze() {
         }
     }
 
-    // Overall Average
+    // 2. Average
     const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
 
-    // Lookback Average
+    // 3. Last N Average
     const lastNArr = nums.slice(-lookback);
     const lastNAvg = lastNArr.reduce((a, b) => a + b, 0) / lastNArr.length;
 
-    // Linear Regression Trend
+    // 4. Trend (Linear Regression Prediction)
     const trendPrediction = calculateTrend(nums);
 
-    // 4. Final Weighted Result
+    // 5. Final Calculation
     const finalScore = (
         (mode * (wMode / 100)) +
         (avg * (wAvg / 100)) +
@@ -141,7 +158,6 @@ function analyze() {
         (trendPrediction * (wTrend / 100))
     );
 
-    // 5. Update UI
     document.getElementById('resMode').innerText = mode.toFixed(2);
     document.getElementById('resAvg').innerText = avg.toFixed(2);
     document.getElementById('resLastN').innerText = lastNAvg.toFixed(2);
@@ -151,7 +167,7 @@ function analyze() {
 
 function calculateTrend(data) {
     const n = data.length;
-    if (n < 2) return data[0]; // If only 1 number, trend is that number
+    if (n < 2) return data[0];
 
     let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
     for (let i = 0; i < n; i++) {
@@ -162,15 +178,12 @@ function calculateTrend(data) {
     }
 
     const denominator = (n * sumX2 - sumX * sumX);
-    if (denominator === 0) return data[0]; // Prevent division by zero
+    if (denominator === 0) return data[0];
 
     const slope = (n * sumXY - sumX * sumY) / denominator;
     const intercept = (sumY - slope * sumX) / n;
 
-    // Predict the value at index 'n' (the next step)
     let prediction = (slope * n) + intercept;
-
-    // Force result to stay within [1, 4]
     return Math.min(4, Math.max(1, prediction));
 }
 
