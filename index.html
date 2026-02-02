@@ -97,3 +97,81 @@ function analyze() {
     const wTrend = parseFloat(document.getElementById('wTrend').value) || 0;
 
     if (Math.abs((wMode + wAvg + wLastN + wTrend) - 100) > 0.01) {
+        showError(`Warning: Weights add up to ${wMode + wAvg + wLastN + wTrend}%. They must add up to exactly 100%.`);
+        return;
+    }
+
+    errDiv.style.display = 'none';
+    resDiv.style.display = 'block';
+
+    // 3. Calculations
+    
+    // Mode Logic
+    const freq = {};
+    nums.forEach(n => freq[n] = (freq[n] || 0) + 1);
+    let mode = nums[0];
+    let maxFreq = 0;
+    for (const n in freq) {
+        if (freq[n] > maxFreq) {
+            maxFreq = freq[n];
+            mode = Number(n);
+        }
+    }
+
+    // Average Logic
+    const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
+
+    // Dynamic Last N Average
+    const lastNArr = nums.slice(-lookback);
+    const lastNAvg = lastNArr.reduce((a, b) => a + b, 0) / lastNArr.length;
+
+    // Trend Logic (Linear Regression)
+    let trendPrediction = calculateTrend(nums);
+
+    // 4. Final Weighted Average
+    const finalScore = (
+        (mode * (wMode / 100)) +
+        (avg * (wAvg / 100)) +
+        (lastNAvg * (wLastN / 100)) +
+        (trendPrediction * (wTrend / 100))
+    );
+
+    // 5. UI Updates
+    document.getElementById('resMode').innerText = mode.toFixed(2);
+    document.getElementById('resAvg').innerText = avg.toFixed(2);
+    document.getElementById('resLastN').innerText = lastNAvg.toFixed(2);
+    document.getElementById('resTrend').innerText = trendPrediction.toFixed(2);
+    document.getElementById('resFinal').innerText = finalScore.toFixed(2);
+}
+
+function calculateTrend(data) {
+    const n = data.length;
+    if (n < 2) return data[0]; 
+
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    for (let i = 0; i < n; i++) {
+        sumX += i;
+        sumY += data[i];
+        sumXY += i * data[i];
+        sumX2 += i * i;
+    }
+
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+
+    // Predict the NEXT point in the sequence
+    let prediction = (slope * n) + intercept;
+
+    // Strict clamping [1, 4]
+    return Math.min(4, Math.max(1, prediction));
+}
+
+function showError(msg) {
+    const errDiv = document.getElementById('errorMessage');
+    errDiv.innerText = msg;
+    errDiv.style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+}
+</script>
+</body>
+</html>
