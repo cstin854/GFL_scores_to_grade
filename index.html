@@ -2,408 +2,98 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GFL Calculators Merged</title>
+    <title>Dynamic Sequence Analyzer</title>
     <style>
-        /* ======================================================= */
-        /* STYLES FROM FILE 1 (PREDICTOR) */
-        /* ======================================================= */
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            background-color: #f4f4f9;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            margin-bottom: 50px; /* Added margin to separate containers */
-        }
-        .container:first-of-type {
-            max-width: 600px; /* Predictor width */
-        }
-        .container:last-of-type {
-            max-width: 400px; /* Calculator width */
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        .input-group {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        label {
-            font-weight: bold;
-            flex-basis: 35%;
-        }
-        input[type="text"] {
-            flex-grow: 1;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 16px;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-            width: 100%;
-            margin-bottom: 20px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .results-grid {
-            margin-top: 30px;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-        }
-        .result-box {
-            padding: 15px;
-            border-radius: 4px;
-            text-align: center;
-        }
-        .result-box-main {
-            grid-column: 1 / -1; /* Spans both columns */
-            background-color: #d4edda;
-            border: 2px solid #28a745;
-        }
-        .result-box-secondary {
-            background-color: #e2e3e5;
-            border: 1px solid #c8c8c8;
-        }
-        .result-box strong {
-            font-size: 1.1em;
-            display: block;
-            margin-bottom: 5px;
-        }
-        .result-value {
-            font-size: 1.8em;
-            font-weight: bold;
-            color: #0d6d24;
-        }
-        .result-value-secondary {
-            font-size: 1.4em;
-            font-weight: bold;
-            color: #333;
-        }
-        #trendPrediction .result-value {
-            color: #007bff;
-        }
-        .error-message {
-            color: #dc3545;
-            margin-top: 10px;
-            font-weight: bold;
-            text-align: center;
-        }
-        /* The original .footer-link styles are removed as the link is gone */
-
-        /* ======================================================= */
-        /* UNIQUE STYLES FROM FILE 2 (GRADE CALCULATOR) */
-        /* ======================================================= */
-        .grade-input {
-            margin-bottom: 20px;
-        }
-        .grade-input label {
-            /* Overriding flex-basis from file 1's general label */
-            flex-basis: auto; 
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        .grade-input select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-        #result-container {
-            margin-top: 30px;
-            padding: 15px;
-            border: 2px solid #333;
-            border-radius: 4px;
-            text-align: center;
-            background-color: #e0f7fa;
-            margin-bottom: 20px;
-        }
-        #calculated-grade-label {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-            display: block;
-        }
-        #calculated-grade {
-            font-size: 3em;
-            font-weight: bolder;
-            color: #00796b;
-            display: block;
-        }
-        /* The original .navigation-link styles are removed as the link is gone */
+        body { font-family: sans-serif; max-width: 600px; margin: 2rem auto; line-height: 1.5; padding: 0 1rem; color: #333; }
+        .input-group { margin-bottom: 1.5rem; }
+        label { display: block; font-weight: bold; margin-bottom: 0.25rem; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .weights { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f9f9f9; padding: 1rem; border-radius: 8px; border: 1px solid #eee; }
+        .error { color: #d93025; font-weight: bold; margin-top: 1rem; padding: 10px; background: #fce8e6; border-radius: 4px; display: none; }
+        #results { margin-top: 2rem; border-top: 2px solid #eee; padding-top: 1rem; }
+        .result-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .final-score { font-size: 1.4rem; color: #1a73e8; font-weight: bold; margin-top: 1.5rem; text-align: center; background: #e8f0fe; padding: 10px; border-radius: 8px; }
+        button { width: 100%; margin-top: 1rem; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #1557b0; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Predict Current Level of Perforamnce <b>within</b> a Skill Category</h1>
-    
-        <div class="input-group">
-            <label for="numberInput">Enter Numbers:</label>
-            <input type="text" id="numberInput" placeholder="e.g., 1, 3, 2, 3, 2">
+    <h2>Sequence Data Analyzer</h2>
+
+    <div class="input-group">
+        <label>Enter Sequence (1-4 only, separated by spaces or commas):</label>
+        <input type="text" id="dataInput" placeholder="e.g., 1, 3, 2, 4, 1, 2">
+    </div>
+
+    <div class="input-group">
+        <label>Lookback Period (Recent Scores):</label>
+        <select id="lookbackCount">
+            <option value="2">Last 2 scores</option>
+            <option value="3" selected>Last 3 scores</option>
+            <option value="4">Last 4 scores</option>
+        </select>
+    </div>
+
+    <div class="weights">
+        <div>
+            <label>Mode Weight (%)</label>
+            <input type="number" id="wMode" value="25">
         </div>
-    
-        <button onclick="predictNext()">Calculate Predictions</button>
-    
-        <div id="errorMessage" class="error-message" style="display: none;"></div>
-    
-        <div class="results-grid">
-            <div id="trendPrediction" class="result-box result-box-main">
-                <strong>Trend Prediction (LSRL)</strong>
-                <span class="result-value">--</span>
-            </div>
-            
-            <div id="modePrediction" class="result-box result-box-secondary">
-                <strong>Mode / Avg of Modes</strong>
-                <span class="result-value-secondary">--</span>
-            </div>
-            
-            <div id="avgLastTwoPrediction" class="result-box result-box-secondary">
-                <strong>Avg of Last Two</strong>
-                <span class="result-value-secondary">--</span>
-            </div>
+        <div>
+            <label>Overall Avg Weight (%)</label>
+            <input type="number" id="wAvg" value="25">
         </div>
-        
+        <div>
+            <label id="weightLabelLastN">Last 3 Avg Weight (%)</label>
+            <input type="number" id="wLastN" value="25">
         </div>
+        <div>
+            <label>Trend Weight (%)</label>
+            <input type="number" id="wTrend" value="25">
+        </div>
+    </div>
 
-    <div class="container">
-        <h2>Skill Grade Calculator</h2>
+    <button onclick="analyze()">Calculate Results</button>
+
+    <div id="errorMessage" class="error"></div>
+
+    <div id="results" style="display:none;">
+        <h3>Calculated Metrics</h3>
+        <div class="result-item"><span>Mode:</span> <strong id="resMode">-</strong></div>
+        <div class="result-item"><span>Overall Average:</span> <strong id="resAvg">-</strong></div>
+        <div class="result-item"><span id="labelLastN">Last 3 Average:</span> <strong id="resLastN">-</strong></div>
+        <div class="result-item"><span>Predicted Trend:</span> <strong id="resTrend">-</strong></div>
+        <div class="final-score">Weighted Average: <span id="resFinal">-</span></div>
+    </div>
+
+<script>
+// Keep track of the dropdown to update labels dynamically
+document.getElementById('lookbackCount').addEventListener('change', function(e) {
+    const val = e.target.value;
+    document.getElementById('weightLabelLastN').innerText = `Last ${val} Avg Weight (%)`;
+    document.getElementById('labelLastN').innerText = `Last ${val} Average:`;
+});
+
+function analyze() {
+    const inputVal = document.getElementById('dataInput').value;
+    const lookback = parseInt(document.getElementById('lookbackCount').value);
+    const errDiv = document.getElementById('errorMessage');
+    const resDiv = document.getElementById('results');
     
-        <div class="grade-input">
-            <label for="fluency">Procedural Fluency</label>
-            <select id="fluency" onchange="calculateGrade()">
-                <option value="4">4</option>
-                <option value="3" selected>3</option>
-                <option value="2">2</option>
-                <option value="1">1</option>
-            </select>
-        </div>
-    
-        <div class="grade-input">
-            <label for="representations">Multiple Representations</label>
-            <select id="representations" onchange="calculateGrade()">
-                <option value="4">4</option>
-                <option value="3" selected>3</option>
-                <option value="2">2</option>
-                <option value="1">1</option>
-            </select>
-        </div>
-    
-        <div class="grade-input">
-            <label for="justification">Justification</label>
-            <select id="justification" onchange="calculateGrade()">
-                <option value="4">4</option>
-                <option value="3" selected>3</option>
-                <option value="2">2</option>
-                <option value="1">1</option>
-            </select>
-        </div>
-    
-        <div id="result-container">
-            <span id="calculated-grade-label">Calculated Grade</span>
-            <span id="calculated-grade"></span>
-        </div>
-    
-        </div>
+    // 1. Parse and Validate Input
+    const rawItems = inputVal.split(/[ ,]+/).filter(i => i.length > 0);
+    const nums = rawItems.map(Number);
 
-    <script>
-        // =======================================================
-        // SCRIPT FROM FILE 1 (PREDICTOR)
-        // =======================================================
+    if (nums.length === 0 || nums.some(n => ![1, 2, 3, 4].includes(n))) {
+        showError("Error: Please enter only the numbers 1, 2, 3, or 4.");
+        return;
+    }
 
-        /**
-         * Parses the user input string into an array of numbers.
-         * @param {string} input - The raw input string.
-         * @returns {number[]} - An array of valid numbers.
-         */
-        function parseInput(input) {
-            return input
-                .split(/[\s,]+/)
-                .filter(s => s.trim() !== '')
-                .map(Number)
-                .filter(n => !isNaN(n));
-        }
+    // 2. Validate Weights
+    const wMode = parseFloat(document.getElementById('wMode').value) || 0;
+    const wAvg = parseFloat(document.getElementById('wAvg').value) || 0;
+    const wLastN = parseFloat(document.getElementById('wLastN').value) || 0;
+    const wTrend = parseFloat(document.getElementById('wTrend').value) || 0;
 
-        /**
-         * Calculates the slope (b) of the Least-Squares Regression Line (LSRL).
-         */
-        function calculateSlope(x, y, meanX, meanY) {
-            let numerator = 0;
-            let denominator = 0;
-
-            for (let i = 0; i < x.length; i++) {
-                const dx = x[i] - meanX;
-                const dy = y[i] - meanY;
-                numerator += dx * dy;
-                denominator += dx * dx;
-            }
-
-            return denominator === 0 ? 0 : numerator / denominator;
-        }
-
-        /**
-         * Calculates the mode of an array of numbers, returning the average of modes if multimodal.
-         */
-        function calculateMode(arr) {
-            if (arr.length === 0) return 'N/A (Empty)';
-
-            const counts = {};
-            let maxCount = 0;
-
-            // 1. Count frequencies and find max count
-            arr.forEach(val => {
-                const key = String(val); 
-                counts[key] = (counts[key] || 0) + 1;
-                if (counts[key] > maxCount) {
-                    maxCount = counts[key];
-                }
-            });
-
-            // 2. Find all values (modes) that match the max frequency
-            const modes = [];
-            for (const key in counts) {
-                if (counts[key] === maxCount) {
-                    modes.push(Number(key)); 
-                }
-            }
-
-            // 3. Handle results
-            if (maxCount === 1) {
-                return 'N/A (No Repeat)';
-            }
-
-            if (modes.length === 1) {
-                return modes[0];
-            } else {
-                // Multimodal: Average of the modes
-                const sumOfModes = modes.reduce((acc, val) => acc + val, 0);
-                return sumOfModes / modes.length;
-            }
-        }
-
-        /**
-         * Main function for the Time-Series Predictor.
-         */
-        function predictNext() {
-            const inputElement = document.getElementById('numberInput');
-            const errorElement = document.getElementById('errorMessage');
-            
-            const trendEl = document.querySelector('#trendPrediction .result-value');
-            const modeEl = document.querySelector('#modePrediction .result-value-secondary');
-            const avgTwoEl = document.querySelector('#avgLastTwoPrediction .result-value-secondary');
-            
-            // Reset results and error message
-            [trendEl, modeEl, avgTwoEl].forEach(el => el.textContent = '--');
-            errorElement.style.display = 'none';
-
-            const data = parseInput(inputElement.value);
-
-            if (data.length < 2) {
-                errorElement.textContent = 'Please enter at least two valid numbers.';
-                errorElement.style.display = 'block';
-                return;
-            }
-
-            // 1. TREND PREDICTION (LSRL)
-            const n = data.length;
-            const x = Array.from({ length: n }, (_, i) => i);
-            const y = data;
-
-            const sumX = x.reduce((acc, val) => acc + val, 0);
-            const sumY = y.reduce((acc, val) => acc + val, 0);
-            const meanX = sumX / n;
-            const meanY = sumY / n;
-
-            const b = calculateSlope(x, y, meanX, meanY);
-            const a = meanY - b * meanX;
-            
-            const nextX = n;
-            const predictedY = a + b * nextX;
-            trendEl.textContent = predictedY.toFixed(2);
-
-            // 2. MODE / AVG OF MODES PREDICTION
-            const modeResult = calculateMode(data);
-            if (typeof modeResult === 'number') {
-                modeEl.textContent = modeResult.toFixed(2);
-            } else {
-                modeEl.textContent = modeResult; 
-            }
-
-            // 3. AVERAGE OF LAST TWO
-            const lastValue = data[n - 1];
-            const secondLastValue = data[n - 2];
-            const avgLastTwo = (lastValue + secondLastValue) / 2;
-            avgTwoEl.textContent = avgLastTwo.toFixed(2);
-        }
-
-        // =======================================================
-        // SCRIPT FROM FILE 2 (GRADE CALCULATOR)
-        // =======================================================
-        
-        // This is the complete rubric data from the table you provided, structured for quick look-up.
-        const RUBRIC_MAP = {
-            "1,1,1": "F",
-            "1,1,2": "F",
-            "1,1,3": "F",
-            "1,1,4": "F",
-            "1,2,2": "D",
-            "1,2,3": "CD",
-            "1,2,4": "CD",
-            "1,3,3": "CD",
-            "1,3,4": "CD",
-            "1,4,4": "CD",
-            "2,2,2": "C",
-            "2,2,3": "BC",
-            "2,2,4": "BC",
-            "2,3,3": "B",
-            "2,3,4": "B",
-            "2,4,4": "B",
-            "3,3,3": "AB",
-            "3,3,4": "A",
-            "3,4,4": "A",
-            "4,4,4": "A"
-        };
-
-        function calculateGrade() {
-            const fluency = parseInt(document.getElementById('fluency').value);
-            const representations = parseInt(document.getElementById('representations').value);
-            const justification = parseInt(document.getElementById('justification').value);
-
-            const scores = [fluency, representations, justification];
-            scores.sort((a, b) => a - b);
-            
-            const key = scores.join(',');
-            const grade = RUBRIC_MAP[key];
-
-            document.getElementById('calculated-grade').textContent = grade || "N/A";
-        }
-
-        // Call the grade function once when the page loads to display the initial grade
-        document.addEventListener('DOMContentLoaded', calculateGrade);
-    </script>
-</body>
-</html>
+    if (Math.abs((wMode + wAvg + wLastN + wTrend) - 100) > 0.01) {
