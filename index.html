@@ -2,145 +2,197 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skill Grade Calculator</title>
+    <title>Sequence Analyzer - Custom Weights</title>
     <style>
-        :root {
-            --primary: #2563eb;
-            --bg: #f8fafc;
-            --card: #ffffff;
-            --text: #1e293b;
-        }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); padding: 40px 20px; }
-        .container { max-width: 600px; margin: auto; background: var(--card); padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-        h2 { margin-top: 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
-        
-        .skill-row { margin-bottom: 1.5rem; }
-        .skill-label { display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; text-transform: uppercase; color: #64748b; }
-        
-        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-        .score-btn {
-            flex: 1;
-            min-width: 50px;
-            padding: 12px;
-            border: 1px solid #e2e8f0;
-            background: white;
-            cursor: pointer;
-            border-radius: 6px;
-            font-weight: bold;
-            transition: all 0.2s ease;
-        }
-        .score-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
-        .score-btn.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
-        }
-
-        .result-panel {
-            margin-top: 2rem;
-            padding: 1.5rem;
-            background: #f1f5f9;
-            border-radius: 8px;
-            text-align: center;
-        }
-        .grade-label { font-size: 0.9rem; color: #64748b; margin-bottom: 5px; }
-        #grade-output { font-size: 3rem; font-weight: 800; color: var(--primary); display: block; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 650px; margin: 2rem auto; line-height: 1.6; padding: 0 1rem; color: #333; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 2rem; border: 1px solid #eee; }
+        .input-group { margin-bottom: 1.5rem; }
+        label { display: block; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; color: #555; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        .weights-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; border: 1px dashed #ccc; }
+        .error { color: #d93025; font-weight: bold; margin-top: 1rem; padding: 12px; background: #ffeeee; border: 1px solid #ffcccc; border-radius: 6px; display: none; }
+        #results { margin-top: 2rem; border-top: 2px solid #f0f0f0; padding-top: 1rem; }
+        .result-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f9f9f9; }
+        .final-score { font-size: 1.6rem; color: #1a73e8; font-weight: 800; margin-top: 1.5rem; text-align: center; background: #e8f0fe; padding: 15px; border-radius: 8px; border: 1px solid #c2e7ff; }
+        .button-group { display: flex; gap: 10px; margin-top: 1rem; }
+        .btn-calc { flex: 2; padding: 14px; background: #1a73e8; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-reset { flex: 1; padding: 14px; background: #f1f3f4; color: #3c4043; border: 1px solid #dadce0; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-calc:hover { background: #1557b0; }
+        .btn-reset:hover { background: #e8eaed; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Skill Assessment</h2>
-    
-    <div id="calculator-ui">
-        </div>
+<div class="card">
+    <h2>Sequence Analyzer</h2>
 
-    <div class="result-panel">
-        <div class="grade-label">OVERALL GRADE</div>
-        <span id="grade-output">C</span>
+    <div class="input-group">
+        <label>Enter Sequence (Values: 1, 2, 3, 4):</label>
+        <input type="text" id="dataInput" placeholder="e.g., 1 2 4 3 2">
+    </div>
+
+    <div class="input-group">
+        <label>Recent Lookback Period:</label>
+        <select id="lookbackCount" onchange="updateLabels()">
+            <option value="2">Last 2 scores</option>
+            <option value="3" selected>Last 3 scores</option>
+            <option value="4">Last 4 scores</option>
+        </select>
+    </div>
+
+    <div class="weights-grid">
+        <div>
+            <label>Mode Weight (%)</label>
+            <input type="number" id="wMode" value="20">
+        </div>
+        <div>
+            <label>Avg Weight (%)</label>
+            <input type="number" id="wAvg" value="15">
+        </div>
+        <div>
+            <label id="weightLabelLastN">Last 3 Weight (%)</label>
+            <input type="number" id="wLastN" value="40">
+        </div>
+        <div>
+            <label>Trend Weight (%)</label>
+            <input type="number" id="wTrend" value="25">
+        </div>
+    </div>
+
+    <div class="button-group">
+        <button class="btn-calc" onclick="analyze()">Calculate Results</button>
+        <button class="btn-reset" onclick="resetForm()">Reset Defaults</button>
+    </div>
+
+    <div id="errorMessage" class="error"></div>
+
+    <div id="results" style="display:none;">
+        <h3>Calculated Metrics</h3>
+        <div class="result-item"><span>Mode (Frequency):</span> <strong id="resMode">-</strong></div>
+        <div class="result-item"><span>Overall Average:</span> <strong id="resAvg">-</strong></div>
+        <div class="result-item"><span id="labelLastN">Last 3 Average:</span> <strong id="resLastN">-</strong></div>
+        <div class="result-item"><span>Predicted Trend:</span> <strong id="resTrend">-</strong></div>
+        <div class="final-score">Weighted Total: <span id="resFinal">-</span></div>
     </div>
 </div>
 
 <script>
-    const categories = ["Skill Category 1", "Skill Category 2", "Skill Category 3"];
-    // Defaulting all to 2 as per instructions
-    const currentScores = [2, 2, 2]; 
-    const options = ["NE", 1, 2, 3, 4];
+function updateLabels() {
+    const val = document.getElementById('lookbackCount').value;
+    document.getElementById('weightLabelLastN').innerText = `Last ${val} Weight (%)`;
+    document.getElementById('labelLastN').innerText = `Last ${val} Average:`;
+}
 
-    function render() {
-        const container = document.getElementById('calculator-ui');
-        container.innerHTML = '';
+function resetForm() {
+    // Reset inputs
+    document.getElementById('dataInput').value = "";
+    document.getElementById('lookbackCount').value = "3";
+    
+    // Reset specific weights requested
+    document.getElementById('wMode').value = "20";
+    document.getElementById('wAvg').value = "15";
+    document.getElementById('wLastN').value = "40";
+    document.getElementById('wTrend').value = "25";
+    
+    // Reset UI
+    updateLabels();
+    document.getElementById('errorMessage').style.display = 'none';
+    document.getElementById('results').style.display = 'none';
+}
 
-        categories.forEach((cat, rowIndex) => {
-            const row = document.createElement('div');
-            row.className = 'skill-row';
+function analyze() {
+    const inputVal = document.getElementById('dataInput').value;
+    const lookback = parseInt(document.getElementById('lookbackCount').value);
+    const errDiv = document.getElementById('errorMessage');
+    const resDiv = document.getElementById('results');
+    
+    const rawItems = inputVal.split(/[ ,]+/).filter(i => i.length > 0);
+    const nums = rawItems.map(Number);
 
-            const label = document.createElement('span');
-            label.className = 'skill-label';
-            label.innerText = cat;
-            row.appendChild(label);
-
-            const group = document.createElement('div');
-            group.className = 'btn-group';
-
-            options.forEach(opt => {
-                const btn = document.createElement('button');
-                btn.className = `score-btn ${currentScores[rowIndex] === opt ? 'active' : ''}`;
-                btn.innerText = opt;
-                btn.onclick = () => updateScore(rowIndex, opt);
-                group.appendChild(btn);
-            });
-
-            row.appendChild(group);
-            container.appendChild(row);
-        });
-        calculateGrade();
+    if (nums.length === 0 || nums.some(n => ![1, 2, 3, 4].includes(n) || isNaN(n))) {
+        showError("Please enter only numbers 1, 2, 3, or 4.");
+        return;
     }
 
-    function updateScore(index, value) {
-        currentScores[index] = value;
-        render(); // Re-render to update visual "active" state
+    const wMode = parseFloat(document.getElementById('wMode').value) || 0;
+    const wAvg = parseFloat(document.getElementById('wAvg').value) || 0;
+    const wLastN = parseFloat(document.getElementById('wLastN').value) || 0;
+    const wTrend = parseFloat(document.getElementById('wTrend').value) || 0;
+
+    const totalWeight = wMode + wAvg + wLastN + wTrend;
+    if (Math.abs(totalWeight - 100) > 0.01) {
+        showError(`Weights must total 100%. Currently: ${totalWeight}%`);
+        return;
     }
 
-    function calculateGrade() {
-        const s = currentScores;
-        const count = (val) => s.filter(x => x === val).length;
-        
-        // Filter out "NE" for numerical comparisons
-        const nums = s.filter(x => typeof x === 'number');
-        const minNum = Math.min(...nums);
-        const maxNum = Math.max(...nums);
-        const hasNE = s.includes("NE");
+    errDiv.style.display = 'none';
+    resDiv.style.display = 'block';
 
-        let grade = "F"; // Default fallback
-
-        // Implementation of your specific grading logic
-        if (hasNE || count(1) >= 2) {
-            grade = "F";
-        } else if (count(1) === 1 && count(2) === 2) {
-            grade = "D";
-        } else if (count(1) === 1 && maxNum >= 3) {
-            grade = "CD";
-        } else if (s.every(x => x === 2)) {
-            grade = "C";
-        } else if (count(2) >= 2 && maxNum >= 3) {
-            grade = "BC";
-        } else if (count(2) === 1 && minNum === 2 && s.every(x => x >= 2)) {
-            grade = "B";
-        } else if (s.every(x => x === 3)) {
-            grade = "AB";
-        } else if (maxNum >= 4 && minNum >= 3) {
-            grade = "A";
+    // 1. Mode
+    const freq = {};
+    nums.forEach(n => freq[n] = (freq[n] || 0) + 1);
+    let mode = nums[0];
+    let maxFreq = 0;
+    for (const n in freq) {
+        if (freq[n] > maxFreq) {
+            maxFreq = freq[n];
+            mode = Number(n);
         }
-
-        document.getElementById('grade-output').innerText = grade;
     }
 
-    // Initial Load
-    render();
-</script>
+    // 2. Average
+    const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
 
+    // 3. Last N Average
+    const lastNArr = nums.slice(-lookback);
+    const lastNAvg = lastNArr.reduce((a, b) => a + b, 0) / lastNArr.length;
+
+    // 4. Trend (Linear Regression Prediction)
+    const trendPrediction = calculateTrend(nums);
+
+    // 5. Final Calculation
+    const finalScore = (
+        (mode * (wMode / 100)) +
+        (avg * (wAvg / 100)) +
+        (lastNAvg * (wLastN / 100)) +
+        (trendPrediction * (wTrend / 100))
+    );
+
+    document.getElementById('resMode').innerText = mode.toFixed(2);
+    document.getElementById('resAvg').innerText = avg.toFixed(2);
+    document.getElementById('resLastN').innerText = lastNAvg.toFixed(2);
+    document.getElementById('resTrend').innerText = trendPrediction.toFixed(2);
+    document.getElementById('resFinal').innerText = finalScore.toFixed(2);
+}
+
+function calculateTrend(data) {
+    const n = data.length;
+    if (n < 2) return data[0];
+
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    for (let i = 0; i < n; i++) {
+        sumX += i;
+        sumY += data[i];
+        sumXY += i * data[i];
+        sumX2 += i * i;
+    }
+
+    const denominator = (n * sumX2 - sumX * sumX);
+    if (denominator === 0) return data[0];
+
+    const slope = (n * sumXY - sumX * sumY) / denominator;
+    const intercept = (sumY - slope * sumX) / n;
+
+    let prediction = (slope * n) + intercept;
+    return Math.min(4, Math.max(1, prediction));
+}
+
+function showError(msg) {
+    const errDiv = document.getElementById('errorMessage');
+    errDiv.innerText = msg;
+    errDiv.style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+}
+</script>
 </body>
 </html>
