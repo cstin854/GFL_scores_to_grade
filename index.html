@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sequence Analyzer - Custom Weights</title>
+    <title>Sequence Analyzer - Advanced Mode Logic</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 650px; margin: 2rem auto; line-height: 1.6; padding: 0 1rem; color: #333; }
         .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 2rem; border: 1px solid #eee; }
@@ -19,6 +19,7 @@
         .btn-reset { flex: 1; padding: 14px; background: #f1f3f4; color: #3c4043; border: 1px solid #dadce0; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .btn-calc:hover { background: #1557b0; }
         .btn-reset:hover { background: #e8eaed; }
+        .explanation { font-size: 0.8rem; color: #666; font-style: italic; }
     </style>
 </head>
 <body>
@@ -28,7 +29,7 @@
 
     <div class="input-group">
         <label>Enter Sequence (Values: 1, 2, 3, 4):</label>
-        <input type="text" id="dataInput" placeholder="e.g., 1 2 4 3 2">
+        <input type="text" id="dataInput" placeholder="e.g., 1 3 3 2 2">
     </div>
 
     <div class="input-group">
@@ -68,11 +69,15 @@
 
     <div id="results" style="display:none;">
         <h3>Calculated Metrics</h3>
-        <div class="result-item"><span>Mode (Frequency):</span> <strong id="resMode">-</strong></div>
+        <div class="result-item">
+            <span>Calculated Mode:</span> 
+            <strong id="resMode">-</strong>
+        </div>
         <div class="result-item"><span>Overall Average:</span> <strong id="resAvg">-</strong></div>
         <div class="result-item"><span id="labelLastN">Last 3 Average:</span> <strong id="resLastN">-</strong></div>
         <div class="result-item"><span>Predicted Trend:</span> <strong id="resTrend">-</strong></div>
         <div class="final-score">Weighted Total: <span id="resFinal">-</span></div>
+        <p class="explanation">* Mode defaults to mean if no repeats exist, or average of modes if ties exist.</p>
     </div>
 </div>
 
@@ -84,17 +89,12 @@ function updateLabels() {
 }
 
 function resetForm() {
-    // Reset inputs
     document.getElementById('dataInput').value = "";
     document.getElementById('lookbackCount').value = "3";
-    
-    // Reset specific weights requested
     document.getElementById('wMode').value = "20";
     document.getElementById('wAvg').value = "15";
     document.getElementById('wLastN').value = "40";
     document.getElementById('wTrend').value = "25";
-    
-    // Reset UI
     updateLabels();
     document.getElementById('errorMessage').style.display = 'none';
     document.getElementById('results').style.display = 'none';
@@ -119,46 +119,58 @@ function analyze() {
     const wLastN = parseFloat(document.getElementById('wLastN').value) || 0;
     const wTrend = parseFloat(document.getElementById('wTrend').value) || 0;
 
-    const totalWeight = wMode + wAvg + wLastN + wTrend;
-    if (Math.abs(totalWeight - 100) > 0.01) {
-        showError(`Weights must total 100%. Currently: ${totalWeight}%`);
+    if (Math.abs((wMode + wAvg + wLastN + wTrend) - 100) > 0.01) {
+        showError(`Weights must total 100%. (Current: ${wMode + wAvg + wLastN + wTrend}%)`);
         return;
     }
 
     errDiv.style.display = 'none';
     resDiv.style.display = 'block';
 
-    // 1. Mode
+    // 1. Average (Calculated first to support Mode fallback)
+    const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
+
+    // 2. Advanced Mode Logic
     const freq = {};
     nums.forEach(n => freq[n] = (freq[n] || 0) + 1);
-    let mode = nums[0];
+    
     let maxFreq = 0;
-    for (const n in freq) {
-        if (freq[n] > maxFreq) {
-            maxFreq = freq[n];
-            mode = Number(n);
-        }
+    for (const key in freq) {
+        if (freq[key] > maxFreq) maxFreq = freq[key];
     }
 
-    // 2. Average
-    const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
+    let calculatedMode;
+    if (maxFreq === 1) {
+        // Condition: No number repeats
+        calculatedMode = avg;
+    } else {
+        // Condition: Find all numbers that hit the max frequency
+        const modes = [];
+        for (const key in freq) {
+            if (freq[key] === maxFreq) {
+                modes.push(Number(key));
+            }
+        }
+        // Calculate average of modes (handles single or multiple)
+        calculatedMode = modes.reduce((a, b) => a + b, 0) / modes.length;
+    }
 
     // 3. Last N Average
     const lastNArr = nums.slice(-lookback);
     const lastNAvg = lastNArr.reduce((a, b) => a + b, 0) / lastNArr.length;
 
-    // 4. Trend (Linear Regression Prediction)
+    // 4. Trend
     const trendPrediction = calculateTrend(nums);
 
-    // 5. Final Calculation
+    // 5. Weighted Final
     const finalScore = (
-        (mode * (wMode / 100)) +
+        (calculatedMode * (wMode / 100)) +
         (avg * (wAvg / 100)) +
         (lastNAvg * (wLastN / 100)) +
         (trendPrediction * (wTrend / 100))
     );
 
-    document.getElementById('resMode').innerText = mode.toFixed(2);
+    document.getElementById('resMode').innerText = calculatedMode.toFixed(2);
     document.getElementById('resAvg').innerText = avg.toFixed(2);
     document.getElementById('resLastN').innerText = lastNAvg.toFixed(2);
     document.getElementById('resTrend').innerText = trendPrediction.toFixed(2);
@@ -168,21 +180,15 @@ function analyze() {
 function calculateTrend(data) {
     const n = data.length;
     if (n < 2) return data[0];
-
     let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
     for (let i = 0; i < n; i++) {
-        sumX += i;
-        sumY += data[i];
-        sumXY += i * data[i];
-        sumX2 += i * i;
+        sumX += i; sumY += data[i];
+        sumXY += i * data[i]; sumX2 += i * i;
     }
-
-    const denominator = (n * sumX2 - sumX * sumX);
-    if (denominator === 0) return data[0];
-
-    const slope = (n * sumXY - sumX * sumY) / denominator;
+    const denom = (n * sumX2 - sumX * sumX);
+    if (denom === 0) return data[0];
+    const slope = (n * sumXY - sumX * sumY) / denom;
     const intercept = (sumY - slope * sumX) / n;
-
     let prediction = (slope * n) + intercept;
     return Math.min(4, Math.max(1, prediction));
 }
